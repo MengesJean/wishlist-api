@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: wishlist-api-app
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - default
+      - proxy
+
+  nginx:
+    image: nginx:alpine
+    container_name: wishlist-api-nginx
+    depends_on:
+      - app
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    expose:
+      - "80"
+    networks:
+      - default
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.laravel.rule=Host(`api-wishlist.dev.localhost`)
+      - traefik.http.routers.laravel.entrypoints=websecure
+      - traefik.http.routers.laravel.tls=true
+      - traefik.http.services.laravel.loadbalancer.server.port=80
+
+  db:
+    image: postgres:18-alpine
+    container_name: wishlist-api-postgres
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - default
+    ports:
+      - "5433:5432"
+
+volumes:
+  pgdata:
+
+networks:
+  proxy:
+    external: true
